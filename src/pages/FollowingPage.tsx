@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate, PanInfo } from 'framer-motion';
 import { Bell, BellOff, Trash2, FolderOpen, User, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/layout/MobileLayout';
-import { api } from '@/api';
+import { mockChannels } from '@/data/mockData';
 import { Channel, Source } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -62,13 +62,9 @@ const SwipeableCard = ({
 
 const FollowingPage = () => {
   const navigate = useNavigate();
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<Channel[]>(mockChannels);
   const { toast } = useToast();
-  useEffect(() => {
-    api.getChannels().then(data => {
-      setChannels(data);
-    });
-  }, []);
+
   // 已关注的集合
   const subscribedCollections = channels.filter(ch => ch.isSubscribed);
   

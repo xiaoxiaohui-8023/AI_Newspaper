@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Plus, Check, Flame, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -6,21 +6,17 @@ import MobileLayout from '@/components/layout/MobileLayout';
 import PullToRefresh from '@/components/common/PullToRefresh';
 import ChannelDetailModal from '@/components/discover/ChannelDetailModal';
 import { ChannelCardSkeleton } from '@/components/ui/skeleton-card';
-import { api } from '@/api';
+import { mockChannels } from '@/data/mockData';
 import { Channel } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 const DiscoverPage = () => {
   const navigate = useNavigate();
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<Channel[]>(mockChannels);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const { toast } = useToast();
-  useEffect(() => {
-    api.getChannels().then(data => {
-      setChannels(data);
-    });
-  }, []);
+
   const handleSubscribe = (channelId: string) => {
     setChannels(prev => 
       prev.map(ch => 
