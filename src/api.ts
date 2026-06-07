@@ -31,6 +31,10 @@ export const api = {
     const res = await fetch(`${BASE_URL}/api/cards/`);
     return res.json();
   },
+  getCard: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/api/cards/${id}`);
+    return res.json();
+  },
 
   getUser: async () => {
     const res = await fetch(`${BASE_URL}/api/users/me`);

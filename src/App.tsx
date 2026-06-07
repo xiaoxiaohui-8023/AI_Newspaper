@@ -8,6 +8,7 @@ import DiscoverPage from "./pages/DiscoverPage";
 import FollowingPage from "./pages/FollowingPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArticleDetailPage from "./pages/ArticleDetailPage";
+import CardDetailPage from "./pages/CardDetailPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import AddSourcePage from "./pages/AddSourcePage";
 import PushSettingsPage from "./pages/PushSettingsPage";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/following" element={<FollowingPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/article/:id" element={<ArticleDetailPage />} />
+          <Route path="/card/:id" element={<CardDetailPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/add-source" element={<AddSourcePage />} />
           <Route path="/settings/push" element={<PushSettingsPage />} />

@@ -4,91 +4,154 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Bell, CheckCircle2, ChevronDown } from 'lucide-react';
 import MobileLayout from '@/components/layout/MobileLayout';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
-import { mockUser } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/api';
 
 const hasPushConfigured = false;
-const isSubscribed = mockUser.isVip;
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] },
+  transition: { duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] as number[] },
 });
 
-// 飞书日报样例
+const parseStructuredSummary = (summary: string) => {
+  const result: Record<string, string> = {};
+  if (!summary) return result;
+  const lines = summary.split('\n').filter(l => l.trim());
+  for (const line of lines) {
+    const colonIndex = line.indexOf('：');
+    if (colonIndex === -1) continue;
+    const label = line.substring(0, colonIndex).trim().replace(/\*/g, '');
+    const content = line.substring(colonIndex + 1).trim();
+    if (content && content !== '暂无') {
+      result[label] = content;
+    }
+  }
+  return result;
+};
+
+const ArticleCard = ({ article, index, onClick }: { article: any; index: number; onClick: () => void }) => {
+  const [expanded, setExpanded] = useState(false);
+  const structured = parseStructuredSummary(article.summary);
+
+  const sectionConfig = [
+    { key: '一句话结论', label: '关键结论', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+    { key: '关键数据', label: '关键数据', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+    { key: '为什么重要', label: '重要原因', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
+    { key: '反直觉', label: '反直觉', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
+  ];
+
+  const channelLabel =
+    article.channel_id === 'c1' ? { icon: '🔬', text: '模型动态', color: 'text-[#1456F0]' } :
+    article.channel_id === 'c2' ? { icon: '💰', text: '投融资', color: 'text-amber-500' } :
+    { icon: '🛠', text: '工具与产品', color: 'text-emerald-500' };
+
+  return (
+    <div className={`${index > 0 ? 'border-t border-slate-100 pt-3' : ''}`}>
+      <div className="cursor-pointer" onClick={onClick}>
+        <span className={`text-[11px] font-bold ${channelLabel.color}`}>
+          {channelLabel.icon} {channelLabel.text}
+        </span>
+        <p className="text-[13px] font-semibold text-slate-800 mt-0.5 leading-snug">
+          {article.title}
+        </p>
+        {structured['一句话结论'] && (
+          <p className="text-[12px] text-slate-500 mt-1 leading-relaxed">
+            {structured['一句话结论']}
+          </p>
+        )}
+      </div>
+
+      <button
+        className="mt-2 text-[11px] text-[#1456F0] font-medium flex items-center gap-0.5"
+        onClick={() => setExpanded(!expanded)}
+      >
+        重点解读
+        <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-3 h-3" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 rounded-xl border border-slate-100 overflow-hidden">
+              {sectionConfig.map(({ key, label, color, bg, border }) =>
+                structured[key] ? (
+                  <div key={key} className={`px-3 py-2 border-b last:border-b-0 ${border} ${bg}`}>
+                    <span className={`text-[10px] font-bold ${color} block mb-0.5`}>{label}</span>
+                    <p className="text-[12px] text-slate-700 leading-relaxed">{structured[key]}</p>
+                  </div>
+                ) : null
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const DigestPreview = () => {
   const [expanded, setExpanded] = useState(false);
+  const [cards, setCards] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    api.getCards().then(data => {
+      setCards(data);
+    });
+  }, []);
+
+  const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '年').replace(/(\d+)$/, '$1日').replace(/(\d+)年/, '$1年');
+
+  const visibleCards = expanded ? cards : cards.slice(0, 2);
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-xl border border-slate-200">
-      {/* 飞书顶栏 */}
       <div className="bg-[#1456F0] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-semibold">📅 AI 日报 · 今日</span>
-        </div>
+        <span className="text-white text-sm font-semibold">📅 AI 日报 · {today}</span>
         <span className="text-white/70 text-xs">08:00 送达</span>
       </div>
 
       <div className="bg-white px-4 py-4 space-y-3">
-        {/* 概览 */}
-        <div className="p-3 bg-slate-50 rounded-xl">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">今日概览</p>
-          <p className="text-[13px] text-slate-700 leading-relaxed">
-            GPT-5 预览版静默上线；Anthropic 代码生成首次超越 GPT-4o；a16z 押注 AI 编程赛道创历史最大单笔。
-          </p>
-        </div>
+        {cards.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-4">加载中...</p>
+        ) : (
+          <>
+            {visibleCards.map((card, i) => (
+              <ArticleCard
+                key={card.id}
+                article={card}
+                index={i}
+                onClick={() => navigate(`/card/${card.id}`)}
+              />
+            ))}
 
-        {/* 第一条，默认显示 */}
-        <div className="space-y-1">
-          <span className="text-[11px] font-bold text-[#1456F0]">🔬 模型动态</span>
-          <p className="text-[13px] font-semibold text-slate-800">OpenAI GPT-5 预览版开始内测</p>
-          <p className="text-[12px] text-slate-500 leading-relaxed">
-            没有发布会、没有博客，直接内测邀请。API 近期悄然限流，通常是大版本发布前的惯例动作。
-          </p>
-        </div>
-
-        {/* 展开的内容 */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-3 overflow-hidden"
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="w-full flex items-center justify-center gap-1 pt-1 text-[12px] text-slate-400 hover:text-slate-600 transition-colors"
             >
-              <div className="border-t border-slate-100 pt-3 space-y-1">
-                <span className="text-[11px] font-bold text-amber-500">💰 投融资</span>
-                <p className="text-[13px] font-semibold text-slate-800">a16z 领投 Cursor，估值 $4B</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed">
-                  Thrive 和 DST 同时跟投——这两家通常只在 Pre-IPO 出手，上市预期信号明显。
-                </p>
-              </div>
-              <div className="border-t border-slate-100 pt-3 space-y-1">
-                <span className="text-[11px] font-bold text-emerald-500">🛠 工具与产品</span>
-                <p className="text-[13px] font-semibold text-slate-800">Perplexity 上线 Deep Research</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed">
-                  直接对标 OpenAI 同名产品。信源质量更好，但报告结构比 OpenAI 版本混乱，适合研究用。
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {expanded ? '收起' : '查看更多条目'}
+              <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </motion.div>
+            </button>
 
-        {/* 展开/收起 */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-center gap-1 pt-1 text-[12px] text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          {expanded ? '收起' : '查看更多条目'}
-          <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </motion.div>
-        </button>
-
-        <div className="border-t border-slate-100 pt-2">
-          <p className="text-[11px] text-slate-400 text-center">共处理 23 条动态 · 来自你关注的 8 个信息源</p>
-        </div>
+            <div className="border-t border-slate-100 pt-2">
+              <p className="text-[11px] text-slate-400 text-center">
+                共 {cards.length} 条动态 · 来自你关注的信息源
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -97,6 +160,7 @@ const DigestPreview = () => {
 const HomePage = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSticky, setShowSticky] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -105,7 +169,12 @@ const HomePage = () => {
     if (!seen) setShowOnboarding(true);
   }, []);
 
-  // 滚动超过 300px 显示 sticky CTA
+  useEffect(() => {
+    api.getUser().then(user => {
+      setIsSubscribed(user.isVip);
+    });
+  }, []);
+
   useEffect(() => {
     const el = document.querySelector('main');
     if (!el) return;
@@ -126,7 +195,6 @@ const HomePage = () => {
     <>
       <OnboardingModal isOpen={showOnboarding} onComplete={handleOnboardingComplete} />
 
-      {/* Sticky 底部 CTA */}
       <AnimatePresence>
         {showSticky && !isSubscribed && (
           <motion.div
@@ -149,8 +217,6 @@ const HomePage = () => {
 
       <MobileLayout>
         <div className="pb-10">
-
-          {/* 已订阅状态条 */}
           {isSubscribed && (
             <motion.div {...fadeUp(0)} className="mx-4 mt-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
@@ -180,7 +246,6 @@ const HomePage = () => {
             </motion.div>
           )}
 
-          {/* ── Hero ── */}
           <motion.div {...fadeUp(0.08)} className="px-4 pt-8">
             <p className="text-xs font-semibold text-primary tracking-widest uppercase mb-3">硅谷 AI 情报站</p>
             <h1 className="text-[30px] font-bold text-foreground leading-tight tracking-tight">
@@ -190,7 +255,6 @@ const HomePage = () => {
               不用刷推特，不用追 Newsletter。<br />AI 替你读完，精华送到飞书或邮件。
             </p>
 
-            {/* 社交证明 */}
             <div className="flex items-center gap-3 mt-5">
               <div className="flex -space-x-2.5">
                 {['👨‍💻', '👩‍🔬', '🧑‍💼', '👨‍🎨'].map((e, i) => (
@@ -203,10 +267,8 @@ const HomePage = () => {
                 <span className="font-semibold text-foreground">2,400+</span> 人已订阅
               </p>
             </div>
-
           </motion.div>
 
-          {/* ── 产品样例 ── */}
           <motion.div {...fadeUp(0.18)} className="px-4 mt-10">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-foreground">这是你每天会收到的</p>
@@ -215,7 +277,6 @@ const HomePage = () => {
             <DigestPreview />
           </motion.div>
 
-          {/* ── 三步流程 ── */}
           <motion.div {...fadeUp(0.28)} className="px-4 mt-10">
             <p className="text-sm font-semibold text-foreground mb-5">三步开始使用</p>
             <div className="space-y-5">
@@ -238,7 +299,6 @@ const HomePage = () => {
             </div>
           </motion.div>
 
-          {/* ── 底部 CTA ── */}
           {!isSubscribed && (
             <motion.div {...fadeUp(0.36)} className="px-4 mt-10">
               <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/8 to-accent/8 border border-primary/15 text-center">
@@ -256,7 +316,6 @@ const HomePage = () => {
               </div>
             </motion.div>
           )}
-
         </div>
       </MobileLayout>
     </>
